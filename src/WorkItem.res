@@ -12,3 +12,5 @@ let fromPaths = (paths: option<dict<OpenAPI.pathItem>>) =>
 let printPath = (path: OpenAPI.pathItem) => {
   let a = path.parameters
 }
+
+// TODO: use this for sorting the deps https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm
