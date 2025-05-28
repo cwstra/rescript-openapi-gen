@@ -1,0 +1,21 @@
+{
+  "name": "rescript-openapi-gen",
+  "sources": {
+    "dir": "src",
+    "subdirs": true
+  },
+  "package-specs": {
+    "module": "esmodule",
+    "in-source": true
+  },
+  "suffix": ".res.mjs",
+  "bs-dependencies": [
+    "@rescript/core",
+    "rescript-openapi",
+    "rescript-nodejs",
+    "sury"
+  ],
+  "bsc-flags": [
+    "-open RescriptCore"
+  ]
+}

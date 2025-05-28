@@ -1,0 +1,23 @@
+{
+  "name": "rescript-openapi-gen",
+  "version": "0.0.0",
+  "scripts": {
+    "res:build": "rescript",
+    "res:clean": "rescript clean",
+    "res:dev": "rescript -w"
+  },
+  "keywords": [
+    "rescript"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@rescript/core": "^1.6.1",
+    "rescript": "^11.1.4",
+    "rescript-nodejs": "^16.1.0",
+    "rescript-openapi": "git+https://github.com/cwstra/rescript-openapi#commit=ebf6a1891348f4441a4be1a72206e6617b722328",
+    "sury": "^10.0.1",
+    "yaml": "^2.7.1",
+    "yargs": "^17.7.2"
+  }
+}
