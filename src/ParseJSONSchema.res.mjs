@@ -115,7 +115,19 @@ var t = S.recursive(function (t) {
                           $ref: s.f("$ref", S.option(S.string)),
                           $schema: s.f("$schema", S.option(S.string)),
                           $defs: s.f("$defs", S.option(S.dict(definition))),
-                          type: s.f("type", S.option(arrayable(typeName))),
+                          type: s.f("type", S.union([
+                                    S.option(arrayable(typeName)),
+                                    S.transform(S.literal(""), (function (param) {
+                                            return {
+                                                    p: (function (param) {
+                                                        
+                                                      }),
+                                                    s: (function (param) {
+                                                        return "";
+                                                      })
+                                                  };
+                                          }))
+                                  ])),
                           enum: s.f("enum", S.option(S.array(S.json(true)))),
                           const: s.f("const", S.option(S.json(true))),
                           multipleOf: s.f("multipleOf", S.option(S.$$float)),

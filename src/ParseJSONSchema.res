@@ -1,4 +1,3 @@
-
 let arrayable = (base: S.t<'a>): S.t<JSONSchema.Arrayable.t<'a>> =>
   S.union([
     base->S.transform(s => {
@@ -75,7 +74,18 @@ let t = S.recursive((t: S.t<JSONSchema.t>) => {
     ref: ?s.field("$ref", S.string->S.option),
     schema: ?s.field("$schema", S.string->S.option),
     defs: ?s.field("$defs", definition->S.dict->S.option),
-    type_: ?s.field("type", typeName->arrayable->S.option),
+    type_: ?s.field(
+      "type",
+      S.union([
+        typeName->arrayable->S.option,
+        S.literal(#"")->S.transform(
+          _ => {
+            parser: _ => None,
+            serializer: _ => #"",
+          },
+        ),
+      ]),
+    ),
     enum: ?s.field("enum", S.json(~validate=true)->S.array->S.option),
     const: ?s.field("const", S.json(~validate=true)->S.option),
     multipleOf: ?s.field("multipleOf", S.float->S.option),

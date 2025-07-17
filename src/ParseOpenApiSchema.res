@@ -1,5 +1,5 @@
 let withReference = (base: S.t<'a>): S.t<OpenAPI.WithReference.t<'a>> => {
-  Console.log(base)
+  //Console.log(base)
   S.union([
     base->S.transform(s => {
       parser: base => base->OpenAPI.WithReference.object,
@@ -61,20 +61,20 @@ let externalDocumentation = S.object((s): OpenAPI.externalDocumentation => {
   description: ?s.field("description", S.string->S.option),
   url: s.field("url", S.string->S.url),
 })
-let parameterLocation = S.union([
-  S.literal(OpenAPI.Query),
-  S.literal(OpenAPI.Header),
-  S.literal(OpenAPI.Path),
-  S.literal(OpenAPI.Cookie),
+let parameterLocation = S.enum([
+  OpenAPI.Query,
+  OpenAPI.Header,
+  OpenAPI.Path,
+  OpenAPI.Cookie,
 ])
-let parameterStyle: S.t<OpenAPI.parameterStyle> = S.union([
-  S.literal(#matrix),
-  S.literal(#label),
-  S.literal(#form),
-  S.literal(#simple),
-  S.literal(#spaceDelimited),
-  S.literal(#pipeDelimited),
-  S.literal(#deepObject),
+let parameterStyle: S.t<OpenAPI.parameterStyle> = S.enum([
+  (#matrix),
+  (#label),
+  (#form),
+  (#simple),
+  (#spaceDelimited),
+  (#pipeDelimited),
+  (#deepObject),
 ])
 let example = S.object((s): OpenAPI.example => {
   summary: ?s.field("summary", S.string->S.option),
@@ -213,16 +213,39 @@ let oauthflows = S.object((s): OpenAPI.oauthFlows => {
   clientCredentials: ?s.field("clientCredentials", oauthflow->S.option),
   authorizationCode: ?s.field("authorizationCode", oauthflow->S.option),
 })
-let securityScheme = S.object((s): OpenAPI.securityScheme => {
-  type_: s.field("type", S.string),
-  description: ?s.field("description", S.string->S.option),
-  name: s.field("name", S.string),
-  in_: s.field("in", S.string),
-  scheme: s.field("scheme", S.string),
-  bearerFormat: ?s.field("bearerFormat", S.string->S.option),
-  flows: s.field("flows", oauthflows),
-  openIdConnectUrl: s.field("openIdConnectUrl", S.string),
-})
+let securityScheme = S.union([
+  S.object(s => {
+    s.tag("type", "apiKey")
+    let in_ = S.enum([(#query), (#header), (#cookie)])
+    OpenAPI.ApiKey({
+      description: ?s.field("description", S.string->S.option),
+      name: s.field("name", S.string),
+      in_: s.field("in", in_),
+    })
+  }),
+  S.object((s): OpenAPI.securityScheme => {
+    s.tag("type", "http")
+    Http({
+      description: ?s.field("description", S.string->S.option),
+      scheme: s.field("scheme", S.string),
+      bearerFormat: ?s.field("bearerFormat", S.string->S.option),
+    })
+  }),
+  S.object((s): OpenAPI.securityScheme => {
+    s.tag("type", "oauth2")
+    Oauth2({
+      description: ?s.field("description", S.string->S.option),
+      flows: s.field("flows", oauthflows),
+    })
+  }),
+  S.object((s): OpenAPI.securityScheme => {
+    s.tag("type", "openIdConnect")
+    OpenIdConnect({
+      description: ?s.field("description", S.string->S.option),
+      openIdConnectUrl: s.field("openIdConnectUrl", S.string),
+    })
+  }),
+])
 let components = S.object((s): OpenAPI.components => {
   schemas: ?s.field("schemas", ParseJSONSchema.t->S.dict->S.option),
   responses: ?s.field("responses", response->withReference->S.dict->S.option),

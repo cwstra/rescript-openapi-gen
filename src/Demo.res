@@ -20,19 +20,16 @@ let rawApiSchema = {
 let res = rawApiSchema->S.parseOrThrow(ParseOpenApiSchema.t)
 
 let processSchema = (schema: OpenAPI.t): string => {
-  let handleItem = (item: WorkItem.t): (list<WorkItem.t>, array<string>) =>
-    switch item {
-    | PrintLine(str) => (list{}, [str])
-    | PrintPath({name, value}) => (WorkItem.printPath(value), [])
-    }
-  let rec step = (items: list<WorkItem.t>, lines: array<string>) =>
-    switch items {
+  let rec step = (queue: WorkQueue.t, lines: array<string>) =>
+    switch queue.items {
     | list{} => Array.join(lines, "\n")
     | list{head, ...tail} => {
-        let (newItems, newLines) = handleItem(head)
+        let (newItems, newLines) = WorkQueue.printItem(head)
         Array.unshiftMany(lines, newLines)
-        step(List.concat(newItems, tail), lines)
+        step({...queue, items: List.concat(newItems, tail)}, lines)
       }
     }
-  step(WorkItem.fromPaths(schema.paths), [])
+  step(WorkQueue.fromOpenAPISchema(schema), [])
 }
+
+Console.log(processSchema(res))

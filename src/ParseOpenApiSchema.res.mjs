@@ -5,7 +5,6 @@ import * as OpenAPI from "rescript-openapi/src/OpenAPI.res.mjs";
 import * as ParseJSONSchema from "./ParseJSONSchema.res.mjs";
 
 function withReference(base) {
-  console.log(base);
   return S.union([
               S.transform(base, (function (s) {
                       return {
@@ -93,21 +92,21 @@ var externalDocumentation = S.object(function (s) {
             };
     });
 
-var parameterLocation = S.union([
-      S.literal("query"),
-      S.literal("header"),
-      S.literal("path"),
-      S.literal("cookie")
+var parameterLocation = S.$$enum([
+      "query",
+      "header",
+      "path",
+      "cookie"
     ]);
 
-var parameterStyle = S.union([
-      S.literal("matrix"),
-      S.literal("label"),
-      S.literal("form"),
-      S.literal("simple"),
-      S.literal("spaceDelimited"),
-      S.literal("pipeDelimited"),
-      S.literal("deepObject")
+var parameterStyle = S.$$enum([
+      "matrix",
+      "label",
+      "form",
+      "simple",
+      "spaceDelimited",
+      "pipeDelimited",
+      "deepObject"
     ]);
 
 var example = S.object(function (s) {
@@ -268,18 +267,47 @@ var oauthflows = S.object(function (s) {
             };
     });
 
-var securityScheme = S.object(function (s) {
-      return {
-              type: s.f("type", S.string),
-              description: s.f("description", S.option(S.string)),
-              name: s.f("name", S.string),
-              in: s.f("in", S.string),
-              scheme: s.f("scheme", S.string),
-              bearerFormat: s.f("bearerFormat", S.option(S.string)),
-              flows: s.f("flows", oauthflows),
-              openIdConnectUrl: s.f("openIdConnectUrl", S.string)
-            };
-    });
+var securityScheme = S.union([
+      S.object(function (s) {
+            s.tag("type", "apiKey");
+            var in_ = S.$$enum([
+                  "query",
+                  "header",
+                  "cookie"
+                ]);
+            return {
+                    type: "apiKey",
+                    description: s.f("description", S.option(S.string)),
+                    name: s.f("name", S.string),
+                    in: s.f("in", in_)
+                  };
+          }),
+      S.object(function (s) {
+            s.tag("type", "http");
+            return {
+                    type: "http",
+                    description: s.f("description", S.option(S.string)),
+                    scheme: s.f("scheme", S.string),
+                    bearerFormat: s.f("bearerFormat", S.option(S.string))
+                  };
+          }),
+      S.object(function (s) {
+            s.tag("type", "oauth2");
+            return {
+                    type: "oauth2",
+                    description: s.f("description", S.option(S.string)),
+                    flows: s.f("flows", oauthflows)
+                  };
+          }),
+      S.object(function (s) {
+            s.tag("type", "openIdConnect");
+            return {
+                    type: "openIdConnect",
+                    description: s.f("description", S.option(S.string)),
+                    openIdConnectUrl: s.f("openIdConnectUrl", S.string)
+                  };
+          })
+    ]);
 
 var components = S.object(function (s) {
       return {

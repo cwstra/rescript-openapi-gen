@@ -85,6 +85,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"lodash-es@npm:^4.17.21":
+  version: 4.17.21
+  resolution: "lodash-es@npm:4.17.21"
+  checksum: 10c0/fb407355f7e6cd523a9383e76e6b455321f0f153a6c9625e21a8827d10c54c2a2341bd2ae8d034358b60e07325e1330c14c224ff582d04612a46a4f0479ff2f2
+  languageName: node
+  linkType: hard
+
 "require-directory@npm:^2.1.1":
   version: 2.1.1
   resolution: "require-directory@npm:2.1.1"
@@ -104,23 +111,24 @@ __metadata:
   resolution: "rescript-openapi-gen@workspace:."
   dependencies:
     "@rescript/core": "npm:^1.6.1"
+    lodash-es: "npm:^4.17.21"
     rescript: "npm:^11.1.4"
     rescript-nodejs: "npm:^16.1.0"
-    rescript-openapi: "git+https://github.com/cwstra/rescript-openapi#commit=ebf6a1891348f4441a4be1a72206e6617b722328"
+    rescript-openapi: "git+https://github.com/cwstra/rescript-openapi#commit=e0ad9e3fefde7b4a55b779bda4c068ec853c086f"
     sury: "npm:^10.0.1"
     yaml: "npm:^2.7.1"
     yargs: "npm:^17.7.2"
   languageName: unknown
   linkType: soft
 
-"rescript-openapi@git+https://github.com/cwstra/rescript-openapi#commit=ebf6a1891348f4441a4be1a72206e6617b722328":
+"rescript-openapi@git+https://github.com/cwstra/rescript-openapi#commit=e0ad9e3fefde7b4a55b779bda4c068ec853c086f":
   version: 0.4.0
-  resolution: "rescript-openapi@https://github.com/cwstra/rescript-openapi.git#commit=ebf6a1891348f4441a4be1a72206e6617b722328"
+  resolution: "rescript-openapi@https://github.com/cwstra/rescript-openapi.git#commit=e0ad9e3fefde7b4a55b779bda4c068ec853c086f"
   dependencies:
     sury: "npm:10.x"
   peerDependencies:
     rescript: 11.x
-  checksum: 10c0/02ecd01f580a517ccc33637895182d027a8ebbc86c7a0a98c719feb9e273e731b6b3478af33c4304f7e3e4f56905adb452f5014f4b52265efe7ce1be7cfcf878
+  checksum: 10c0/a55089e38233cb7c0875d816a47f2a2482d7f6b0a1a8436d56cab48a9b8c424f955596d9100604be641207bc1dcbe02e67924c6ddd9ea0df39da32ef9bef4225
   languageName: node
   linkType: hard
 

@@ -2,10 +2,9 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Yaml from "yaml";
-import * as Js_exn from "rescript/lib/es6/js_exn.js";
 import * as Nodefs from "node:fs";
 import * as Process from "process";
-import * as WorkItem from "./WorkItem.res.mjs";
+import * as WorkQueue from "./WorkQueue.res.mjs";
 import * as Core__List from "@rescript/core/src/Core__List.res.mjs";
 import * as Caml_exceptions from "rescript/lib/es6/caml_exceptions.js";
 import * as Caml_splice_call from "rescript/lib/es6/caml_splice_call.js";
@@ -44,29 +43,25 @@ catch (exn){
 var res = S.parseOrThrow(result, ParseOpenApiSchema.t);
 
 function processSchema(schema) {
-  var handleItem = function (item) {
-    if (item.TAG === "PrintLine") {
-      return [
-              /* [] */0,
-              [item._0]
-            ];
-    } else {
-      return Js_exn.raiseError("/Users/cwstra/Other_Repos/openapi/rescript-openapi-gen/src/Demo.res:26:794-799 - Todo");
-    }
-  };
-  var _items = WorkItem.fromPaths(schema.paths);
+  var _queue = WorkQueue.fromOpenAPISchema(schema);
   var lines = [];
   while(true) {
-    var items = _items;
-    if (!items) {
+    var queue = _queue;
+    var match = queue.items;
+    if (!match) {
       return lines.join("\n");
     }
-    var match = handleItem(items.hd);
-    Caml_splice_call.spliceObjApply(lines, "unshift", [match[1]]);
-    _items = Core__List.concat(match[0], items.tl);
+    var match$1 = WorkQueue.printItem(match.hd);
+    Caml_splice_call.spliceObjApply(lines, "unshift", [match$1[1]]);
+    _queue = {
+      items: Core__List.concat(match$1[0], match.tl),
+      globalTypes: queue.globalTypes
+    };
     continue ;
   };
 }
+
+console.log(processSchema(res));
 
 var inputFile = input;
 
