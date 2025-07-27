@@ -64,8 +64,13 @@ var $$String = {
   pascalCase: pascalCase
 };
 
+function then(a, f) {
+  return f(a);
+}
+
 export {
   $$Array ,
   $$String ,
+  then ,
 }
 /* lodash-es Not a pure module */

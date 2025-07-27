@@ -13,12 +13,19 @@ module Op = {
 }
 module ContextOperation = {
   type t = {
+    description: option<string>,
     op: Op.t,
     path: string,
     parentParameters: option<array<OpenAPI.WithReference.t<OpenAPI.parameter>>>,
     value: OpenAPI.operation,
   }
-  let make = (op, path, parentParameters, value) => {op, path, parentParameters, value}
+  let make = (op, path, parentParameters, value: OpenAPI.operation) => {
+    op,
+    description: value.description,
+    path,
+    parentParameters,
+    value,
+  }
   let getPascalCaseName = t =>
     `${t.op->Op.toString->Utils.String.pascalCase}${Option.getOr(
         t.value.operationId,
@@ -34,7 +41,7 @@ module CustomType = {
   type t =
     | OnlyNull
     | HybridDictionary
-  type processResult =
+  type processResultType =
     | BuiltIn(string)
     | Global({asString: string, customType: t})
     | Custom(t)
@@ -54,13 +61,13 @@ module CustomType = {
         //| {properties, additionalProperties} => {}
         //| {properties} => {}
         //| {additionalProperties} => {}
-        | _ => BuiltIn("JSON.t")
+        | _ => %todo
         }
-      | Some(Single(#array)) => BuiltIn("JSON.t")
-      | Some(Array(_)) => BuiltIn("JSON.t")
+      | Some(Single(#array)) => %todo
+      | Some(Array(_)) => %todo
       | None => empty
-      }
-    (schema: option<JSONSchema.t>) => Option.mapOr(schema, empty, goSchema)
+      }->Utils.then(t => (schema.description, t))
+    (schema: option<JSONSchema.t>) => Option.mapOr(schema, (None, empty), goSchema)
   }
 }
 
@@ -72,6 +79,10 @@ type definedParameter = {
 }
 type item =
   | PrintLine(string)
+  | Indent
+  | Unindent
+  | PrintDescription(option<string>)
+  | PrintResponse(OpenAPI.response)
   | PrintCustomType(CustomType.t)
   | PrintOperation({operation: ContextOperation.t, definedParameters: dict<definedParameter>})
   | PrintComponents(OpenAPI.components)
@@ -161,9 +172,59 @@ let rec getSafeName = (desired, reserved) =>
     desired
   }
 
+module ComponentReferencePrinters: {
+  type t<'a> = (string, OpenAPI.WithReference.reference<'a>) => array<item>
+  let schemas: t<'a>
+  let responses: t<'a>
+  //let parameters: t
+  //let requestBodies: t
+  let headers: t<'a>
+  //let pathItems: t
+} = {
+  type t<'a> = (string, OpenAPI.WithReference.reference<'a>) => array<item>
+  let makeExtractReference = part => {
+    let regexp = RegExp.fromString(`#/components/${part}/(\\w+)`)
+    (reference: OpenAPI.WithReference.reference<_>) =>
+      RegExp.exec(regexp, reference.ref)
+      ->Option.getUnsafe
+      ->Array.at(1)
+      ->Option.getUnsafe
+      ->Option.getUnsafe
+  }
+  let makeModulePrinter = (part): t<_> => {
+    let extractReference = makeExtractReference(part)
+    (name, reference) =>
+      extractReference(reference)->Utils.then(sourceName => [
+        PrintLine(
+          `module ${name} = Components.${Utils.String.pascalCase(part)}.${Utils.String.pascalCase(
+              sourceName,
+            )}`,
+        ),
+        PrintDescription(reference.description),
+      ])
+  }
+  let makePropPrinter = (part): t<_> => {
+    let extractReference = makeExtractReference(part)
+    (name, reference) =>
+      extractReference(reference)->Utils.then(sourceName => [
+        PrintLine(
+          `${name}: Components.${Utils.String.pascalCase(part)}.${Utils.String.pascalCase(
+              sourceName,
+            )}.t`,
+        ),
+        PrintDescription(reference.description),
+      ])
+  }
+  let schemas = makeModulePrinter("schemas")
+  let responses = makeModulePrinter("responses")
+  //let parameters = makePrinter("parameters")
+  //let requestBodies = makePrinter("requestBodies")
+  let headers = makePropPrinter("headers")
+  //let pathItems = makePrinter("pathItems")
+}
+
 let fromOpenAPISchema = (schema: OpenAPI.t) => {
   let definedParameters = {
-    let parameterURIRegexp = RegExp.fromString("#/components/parameters/(\\w+)")
     let raw = schema.components->Option.flatMap(c => c.parameters)->Option.getOr(Dict.make())
     let byReference =
       Dict.toArray(raw)
@@ -242,8 +303,11 @@ let fromOpenAPISchema = (schema: OpenAPI.t) => {
     }
     Array.flatMap(byName, ((name, operation)) => [
       PrintLine("}"),
+      Indent,
       PrintOperation({operation, definedParameters}),
+      Unindent,
       PrintLine(`module ${name} = {`),
+      PrintDescription(operation.description),
     ])
   }
   {
@@ -257,6 +321,7 @@ let fromOpenAPISchema = (schema: OpenAPI.t) => {
 
 module GroupedParameters = {
   type entry = {
+    description: option<string>,
     asString: string,
     required: bool,
   }
@@ -295,84 +360,116 @@ let printParameters = (
         Dict.set(
           GroupedParameters.getLocationDict(result, in_),
           propertyName,
-          {asString: stringTypeRepresentation, required},
+          {description: r.description, asString: stringTypeRepresentation, required},
         )
       | None => raise(Missing_Parameter(r.ref))
       }
     | Object({name, in_, ?required, ?schema}) =>
       switch CustomType.processJSONSchema(schema) {
-      | BuiltIn(asString) =>
+      | (description, BuiltIn(asString)) =>
         Dict.set(
           GroupedParameters.getLocationDict(result, in_),
           name,
-          {asString, required: Option.getOr(required, false)},
+          {description, asString, required: Option.getOr(required, false)},
         )
-      | Global({asString, customType}) =>
+      | (description, Global({asString, customType})) =>
         Dict.set(
           GroupedParameters.getLocationDict(result, in_),
           name,
-          {asString, required: Option.getOr(required, false)},
+          {description, asString, required: Option.getOr(required, false)},
         )
       }
     }
   Array.forEach(parentParameters, setParameter)
   Array.forEach(myParameters, setParameter)
-  let printOne = (key, entry: GroupedParameters.entry) =>
+  let printOne = (key, entry: GroupedParameters.entry) => [
     if entry.required {
-      `      ${key}: ${entry.asString}`
+      PrintLine(`${key}: ${entry.asString}`)
     } else {
-      `      ${key}?: ${entry.asString}`
-    }
+      PrintLine(`${key}?: ${entry.asString}`)
+    },
+    PrintDescription(entry.description),
+  ]
   let printDict = (name: string, dict: dict<GroupedParameters.entry>) =>
     switch Dict.toArray(dict) {
     | [] => []
     | properties =>
       [
-        "    }",
-        ...Array.map(properties, ((key, value)) => printOne(key, value)),
-        `    module ${name} = {`,
+        PrintLine("}"),
+        Indent,
+        ...Array.flatMap(properties, ((key, value)) => printOne(key, value)),
+        Unindent,
+        PrintLine(`type ${name} = {`),
       ]
     }
   switch [
-    ...printDict("Query", result.query),
-    ...printDict("Path", result.path),
-    ...printDict("Header", result.header),
-    ...printDict("Cookie", result.cookie),
+    ...printDict("query", result.query),
+    ...printDict("path", result.path),
+    ...printDict("header", result.header),
+    ...printDict("cookie", result.cookie),
   ] {
   | [] => []
-  | parts => ["  }", ...parts, "  module Parameters = {"]->Array.map(s => PrintLine(s))
+  | parts => [PrintLine("}"), Indent, ...parts, Unindent, PrintLine("module Parameters = {")]
   }
 }
+let printResponse = (response: OpenAPI.response) => {
+  [
+    ...Option.mapOr(response.headers, [], headers =>
+      Dict.toArray(headers)->Array.flatMap(((name, value)) =>
+        switch OpenAPI.WithReference.classify(value) {
+        | Reference(r) => ComponentReferencePrinters.headers(name, r)
+        }
+      )
+    ),
+    PrintDescription(Some(response.description)),
+  ]->List.fromArray
+}
+let printResponses = (responses: dict<OpenAPI.WithReference.t<OpenAPI.response>>) =>
+  Dict.toArray(responses)->Array.flatMap(((response, value)) => {
+    switch OpenAPI.WithReference.classify(value) {
+    | Reference(r) => ComponentReferencePrinters.responses(`Code${response}`, r)
+    | Object(o) => [PrintResponse(o)]
+    }
+  })
+
 let printOperation = (
   operation: ContextOperation.t,
   definedParameters: dict<definedParameter>,
 ): list<item> => {
   [
+    ...Option.mapOr(operation.value.responses, [], printResponses),
     ...printParameters(
       Option.getOr(operation.parentParameters, []),
       Option.getOr(operation.value.parameters, []),
       definedParameters,
     ),
-    PrintLine(`  let operation = #${operation.op->Op.toString}`),
-    PrintLine(`  let path = "${operation.path}"`),
+    PrintLine(`let operation = #${operation.op->Op.toString}`),
+    PrintLine(`let path = "${operation.path}"`),
   ]->List.fromArray
 }
 /*
 let printComponents = (components: OpenAPI.components): list<t> => {
   list{
-    PrintLine(`  let operation = #${operation.op->Op.toString}`),
-    PrintLine(`  let operation = #${operation.op->Op.toString}`),
-    PrintLine(`  let path = "${operation.path}"`),
+    PrintLine(`let operation = #${operation.op->Op.toString}`),
+    PrintLine(`let operation = #${operation.op->Op.toString}`),
+    PrintLine(`let path = "${operation.path}"`),
   }
 }
 */
 
-let printItem = (item: item): (list<item>, array<string>) =>
+exception Missing_Command(item)
+
+let printItem = (item: item, indent: int): (list<item>, array<string>, int) =>
   switch item {
-  | PrintLine(str) => (list{}, [str])
+  | PrintLine(str) => (list{}, [`${String.repeat(" ", indent)}${str}`], indent)
+  | Indent => (list{}, [], indent + 2)
+  | Unindent => (list{}, [], indent - 2)
   | PrintOperation({operation, definedParameters}) => (
       printOperation(operation, definedParameters),
       [],
+      indent,
     )
-  | PrintComponents(components) => (list{}, []) //printComponents(components, definedParameters),
+  | PrintComponents(components) => (list{}, [], indent) //printComponents(components, definedParameters),
+  | PrintResponse(response) => (printResponse(response), [], indent)
+  | _ => raise(Missing_Command(item))
   }

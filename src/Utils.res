@@ -30,3 +30,5 @@ module String = {
     `${String.slice(cc, ~start=0, ~end=1)->String.toUpperCase}${String.sliceToEnd(cc, ~start=1)}`
   }
 }
+
+let then = (a, f) => f(a)

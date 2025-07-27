@@ -45,14 +45,17 @@ var res = S.parseOrThrow(result, ParseOpenApiSchema.t);
 function processSchema(schema) {
   var _queue = WorkQueue.fromOpenAPISchema(schema);
   var lines = [];
+  var _indent = 0;
   while(true) {
+    var indent = _indent;
     var queue = _queue;
     var match = queue.items;
     if (!match) {
       return lines.join("\n");
     }
-    var match$1 = WorkQueue.printItem(match.hd);
+    var match$1 = WorkQueue.printItem(match.hd, indent);
     Caml_splice_call.spliceObjApply(lines, "unshift", [match$1[1]]);
+    _indent = match$1[2];
     _queue = {
       items: Core__List.concat(match$1[0], match.tl),
       globalTypes: queue.globalTypes
